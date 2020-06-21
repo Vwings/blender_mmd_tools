@@ -325,3 +325,84 @@ class RecalculateBoneRoll(Operator):
         arm = context.active_object
         FnBone.apply_auto_bone_roll(arm)
         return { 'FINISHED' }
+
+
+@register_wrap
+class SymmetrizeBones(Operator):
+    bl_idname = 'mmd_tools.symmetrize_bones'
+    bl_label = 'Symmetrize Bones'
+    bl_description = 'Symmetrize Bones'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    s_type = bpy.props.StringProperty(
+        name = 'Symmetry Type',
+        default = 'L_R'
+    )
+
+    bonename_postfix = {'.L', '.R'}
+    param_value = {'L', 'R'}
+
+    def execute(self, context):
+        active_obj = context.active_object
+        root = mmd_model.Model.findRoot(active_obj)
+        
+        if root is None:
+            self.report({ 'ERROR' }, 'Select a MMD model')
+            return { 'CANCELLED' }
+        rig = mmd_model.Model(root)
+        arm_obj = rig.armature()
+        
+        if arm_obj is None:
+            self.report({ 'ERROR' }, 'Model Armature not found')
+            return { 'CANCELLED' }
+
+        current_mode = bpy.context.object.mode
+
+        result = False
+        if current_mode == 'EDIT' and active_obj == arm_obj:
+            result = self.__symmetrize_bones(context)
+        else:
+            # deselect all, select and active arm_obj, set to edit mode   
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.select_all(action='DESELECT')
+            arm_obj.select = True
+            bpy.context.view_layer.objects.active = arm_obj
+            bpy.ops.object.mode_set(mode='EDIT')
+
+            result = self.__symmetrize_bones(context)
+
+        return { 'FINISHED' } if result else { 'CANCELLED' }
+
+    def __symmetrize_bones(self, context):
+       
+        bones = context.active_object.data.edit_bones
+
+        (source, target) = self.s_type.split('_')
+        
+        if source not in self.param_value or target not in self.param_value:
+            self.report({ 'ERROR' }, 'Params error, avaliable params: L_R or R_L')
+            return False
+
+        basenames = []
+        for bone in bones:
+            if bone.name[-2:] in self.bonename_postfix and bone.basename not in basenames:
+                basenames.append(bone.basename)
+                source_bone = bones[bone.basename + '.' + source]
+                target_bone = bones[bone.basename + '.' + target]
+                
+                target_bone.head.x = -source_bone.head.x
+                target_bone.head.y = source_bone.head.y
+                target_bone.head.z = source_bone.head.z
+                target_bone.tail.x = -source_bone.tail.x
+                target_bone.tail.y = source_bone.tail.y
+                target_bone.tail.z = source_bone.tail.z
+                target_bone.head_radius = source_bone.head_radius
+                target_bone.tail_radius = source_bone.tail_radius
+                target_bone.roll = source_bone.roll
+                target_bone.length = source_bone.length
+                target_bone.envelope_distance = source_bone.envelope_distance
+                target_bone.envelope_weight = source_bone.envelope_weight
+
+        basenames = None
+        return True
+            

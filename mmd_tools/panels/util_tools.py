@@ -338,3 +338,19 @@ class MMDBoneOrder(_PanelBase, Panel):
                 row.operator('object.vertex_group_move', text='', icon='TRIA_UP').direction = 'UP'
                 row.operator('object.vertex_group_move', text='', icon='TRIA_DOWN').direction = 'DOWN'
 
+
+@register_wrap
+class MMDBoneSymmetryTool(_PanelBase, Panel):
+    bl_idname = 'OBJECT_PT_mmd_tools_bone_symmetry_tool'
+    bl_label = 'Bone Symmetry Tool'
+    bl_context = ''
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        
+        col = layout.column(align=True)
+        col.label(text='Symmetrize .L or .R bones.', icon='BONE_DATA')
+        row = col.row(align=True)
+        row.operator('mmd_tools.symmetrize_bones', text='Left to Right').s_type='L_R'
+        row.operator('mmd_tools.symmetrize_bones', text='Right to Left').s_type='R_L'
